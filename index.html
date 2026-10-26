@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#15283a" />
+  <meta name="description" content="시작일과 기간을 입력하면 달력일·근무일 기준 마감일을 비교하고, 나만의 공휴일과 계산 이력을 저장할 수 있는 업무 기한 계산기" />
+  <title>데드라인 랩 | 업무 기한 계산기</title>
+  <style>
+    :root { color-scheme: light; --ink:#1c3041; --sub:#5d6d7a; --muted:#83909a; --line:#dce6e8; --bg:#f5f7f4; --paper:#ffffff; --teal:#0b7978; --teal-light:#e7f6f2; --orange:#bd6632; --orange-light:#fff1e7; --navy:#14293a; --shadow:0 16px 48px rgba(27,52,65,.075); }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; letter-spacing:-.022em; }
+    button,input,textarea { font:inherit; }
+    button { cursor:pointer; }
+    button:disabled { cursor:not-allowed; opacity:.5; }
+    button:focus-visible,input:focus-visible,textarea:focus-visible { outline:3px solid #69bdb8; outline-offset:3px; }
+    .wrap { max-width:1140px; margin:0 auto; padding:0 26px; }
+    .hero { background:var(--navy); color:#fff; overflow:hidden; position:relative; }
+    .hero::after { content:""; position:absolute; right:-110px; top:-240px; height:550px; width:550px; border:1px solid rgba(255,255,255,.15); border-radius:50%; box-shadow:0 0 0 70px rgba(134,199,179,.04),0 0 0 155px rgba(134,199,179,.04); pointer-events:none; }
+    .hero .wrap { padding-top:23px; padding-bottom:57px; position:relative; z-index:1; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-bottom:54px; }
+    .brand { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:800; letter-spacing:.12em; }
+    .mark { width:31px; height:31px; border:1.5px solid #b8e2d1; border-radius:10px; display:grid; place-items:center; font-size:19px; color:#a8e5d0; }
+    .top-pill { border:1px solid rgba(255,255,255,.22); border-radius:50px; color:#c6d5dd; font-size:12px; padding:9px 14px; }
+    .eyebrow { font-size:12px; color:#a4e0cb; letter-spacing:.2em; font-weight:800; margin:0 0 14px; }
+    h1 { font-size:clamp(32px,5vw,54px); line-height:1.22; letter-spacing:-.063em; margin:0; font-weight:850; }
+    .hero p.lead { color:#c3d1d8; font-size:16px; margin:19px 0 0; line-height:1.8; }
+    .hero-key { color:#a8e6cf; }
+    .main { margin-top:-24px; position:relative; z-index:2; padding-bottom:70px; }
+    .grid { display:grid; grid-template-columns:minmax(0, .95fr) minmax(0,1.05fr); gap:22px; align-items:start; }
+    .panel { background:var(--paper); border:1px solid rgba(208,220,218,.8); border-radius:19px; box-shadow:var(--shadow); overflow:hidden; }
+    .panel-inside { padding:29px; }
+    .section-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:0 0 23px; }
+    .section-heading h2 { font-size:20px; letter-spacing:-.055em; margin:0; font-weight:850; }
+    .tiny { color:var(--sub); font-size:12px; }
+    .field { margin-bottom:21px; }
+    .field label,.field .field-label { display:block; font-weight:750; font-size:13px; margin-bottom:9px; }
+    .field input,.field textarea { border:1px solid #cedbdd; border-radius:11px; padding:13px 14px; width:100%; color:var(--ink); background:#fff; font-size:15px; }
+    .field input:hover,.field textarea:hover { border-color:#9bb8b6; }
+    .field textarea { resize:vertical; min-height:83px; line-height:1.65; }
+    .row2 { display:grid; grid-template-columns:1.1fr .9fr; gap:13px; }
+    .hint { display:block; color:#788794; font-size:12px; margin-top:7px; line-height:1.6; }
+    .quick { display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin-top:10px; }
+    .quick span { color:#74828e; font-size:12px; margin-right:3px; }
+    .quick button { background:#f3f7f6; color:#546d70; border:1px solid #e0e9e8; border-radius:7px; padding:5px 11px; font-size:12px; font-weight:700; }
+    .quick button:hover { background:var(--teal-light); color:var(--teal); }
+    .checkline { display:flex; align-items:flex-start; gap:10px; font-size:13px; font-weight:650; line-height:1.55; margin:3px 0 20px; }
+    .checkline input { accent-color:var(--teal); width:18px; height:18px; margin:1px 0 0; flex:none; }
+    details.holiday { border-top:1px solid #e6eeee; padding-top:16px; }
+    details.holiday summary { cursor:pointer; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    details.holiday summary::after { content:"＋"; font-size:20px; line-height:1; color:var(--teal); }
+    details.holiday[open] summary::after { content:"−"; }
+    .holiday-body { padding-top:16px; }
+    .actionbar { margin-top:23px; }
+    .primary { width:100%; border:0; background:var(--teal); color:#fff; font-weight:850; border-radius:12px; padding:16px; font-size:15px; box-shadow:0 7px 18px rgba(11,121,120,.15); }
+    .primary:hover { background:#096665; }
+    .error { color:#b44332; font-size:12px; min-height:17px; margin:10px 0 0; }
+    .results { padding:29px; }
+    .results .section-heading { margin-bottom:16px; }
+    .result-card { position:relative; border:1px solid #d9e5e4; padding:23px 24px; border-radius:14px; margin-bottom:13px; background:#f8fcfb; overflow:hidden; }
+    .result-card.work { background:#fffaf5; border-color:#f1e3d7; }
+    .result-head { display:flex; gap:10px; align-items:center; margin-bottom:17px; }
+    .result-icon { width:32px; height:32px; display:grid; place-items:center; background:#def0ec; border-radius:9px; color:#0d7776; font-size:17px; }
+    .work .result-icon { background:#fae7d5; color:var(--orange); }
+    .result-title { font-size:13px; font-weight:850; }
+    .result-value { font-weight:850; font-size:clamp(22px,3vw,29px); letter-spacing:-.06em; white-space:nowrap; }
+    .result-extra { margin-top:6px; color:var(--sub); font-size:12px; }
+    .dtag { position:absolute; top:23px; right:22px; font-size:12px; font-weight:850; color:#0a7775; background:#dff3ec; border-radius:7px; padding:5px 8px; }
+    .work .dtag { color:#9a582f; background:#f9e6d6; }
+    .difference { padding:9px 2px 16px; color:#4f6471; font-size:13px; line-height:1.65; }
+    .difference strong { color:var(--ink); }
+    .buttons { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .secondary { background:white; color:#385663; border:1px solid #d6e2e1; border-radius:10px; font-weight:800; padding:12px 8px; font-size:13px; }
+    .secondary:hover { background:#f0f7f5; }
+    .footnote { color:#697c86; border-top:1px solid #e5eeee; padding-top:17px; margin-top:22px; font-size:12px; line-height:1.9; }
+    .footnote strong { color:#455d67; }
+    .lower { display:grid; grid-template-columns:1.05fr .95fr; gap:22px; margin-top:22px; align-items:start; }
+    .calendar { padding:26px; }
+    .calendar-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:17px; }
+    .calendar-top h2,.history h2 { margin:0; font-size:18px; font-weight:850; }
+    .month-buttons { display:flex; align-items:center; gap:9px; }
+    .month-buttons span { min-width:82px; text-align:center; font-size:14px; font-weight:800; }
+    .icon-button { border:1px solid #dce6e8; background:#fff; border-radius:8px; width:28px; height:28px; display:grid; place-items:center; color:#56707b; font-size:18px; }
+    .calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
+    .dayname { font-size:11px; text-align:center; color:#84909b; padding:7px 0; font-weight:800; }
+    .day { display:grid; place-items:center; aspect-ratio:1/1; font-size:12px; font-weight:650; position:relative; border-radius:9px; background:#fff; color:#435b68; border:1px solid transparent; }
+    .day.empty { background:transparent; }
+    .day.weekend { color:#ab8486; }
+    .day.holiday-date { background:#fff3f0; color:#b45d49; }
+    .day.today { border-color:#8aaab0; }
+    .day.cal-due { background:#d7f0e9; color:#0b7470; border-color:#87cac1; font-weight:900; }
+    .day.work-due { background:#ffe9d6; color:#a6572a; border-color:#efba91; font-weight:900; }
+    .day.both-due { background:linear-gradient(135deg,#d7f0e9 0%,#d7f0e9 50%,#ffe9d6 50%,#ffe9d6 100%); border-color:#b2bbae; font-weight:900; }
+    .legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; font-size:11px; color:#647783; }
+    .legend span { display:flex; align-items:center; gap:6px; }
+    .dot { width:9px; height:9px; display:inline-block; border-radius:3px; background:#d7f0e9; border:1px solid #8fcfbe; }
+    .dot.work-dot { background:#ffe9d6; border-color:#eabc9f; }
+    .dot.holiday-dot { background:#fff3f0; border-color:#f0ccc5; }
+    .history { padding:26px; }
+    .history-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .history button.clear { background:transparent; border:0; color:#7f8e95; font-size:12px; text-decoration:underline; }
+    .records { display:flex; flex-direction:column; gap:9px; max-height:330px; overflow:auto; }
+    .record { border:1px solid #e3ebeb; border-radius:11px; padding:13px; }
+    .record-top { display:flex; justify-content:space-between; gap:12px; align-items:start; }
+    .record-title { font-size:13px; font-weight:850; line-height:1.4; overflow-wrap:anywhere; }
+    .record small { display:block; margin-top:6px; color:#7d8a93; font-size:11px; }
+    .record-bottom { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
+    .record-bottom span { color:#576d77; font-size:12px; }
+    .record-actions { display:flex; gap:6px; }
+    .record-actions button { padding:6px 9px; background:#f4f7f6; color:#566f76; border:0; border-radius:7px; font-size:11px; font-weight:800; }
+    .empty-records { font-size:13px; color:#89959b; border:1px dashed #d8e3e4; border-radius:10px; padding:30px 15px; text-align:center; line-height:1.8; }
+    .site-footer { text-align:center; color:#819098; font-size:12px; margin:28px 0 5px; line-height:1.7; }
+    .sr-only { position:absolute; clip:rect(0,0,0,0); clip-path:inset(50%); width:1px; height:1px; overflow:hidden; white-space:nowrap; }
+    #toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%,20px); background:#203948; color:white; border-radius:10px; padding:11px 19px; font-size:13px; box-shadow:0 6px 20px #10253340; opacity:0; pointer-events:none; transition:opacity .2s,transform .2s; z-index:10; }
+    #toast.show { opacity:1; transform:translate(-50%,0); }
+    @media(max-width:800px) { .hero .wrap{padding-bottom:49px} .topbar{margin-bottom:39px} .grid,.lower{grid-template-columns:1fr} .lower{margin-top:16px; gap:16px} .grid{gap:16px} .hero p.lead{font-size:14px} .main{margin-top:-17px} }
+    @media(max-width:500px) { .wrap {padding:0 15px} .hero .wrap{padding-top:18px} .top-pill{font-size:10px; padding:7px 9px} .brand{font-size:12px} .hero p.lead br{display:none} .panel-inside,.results{padding:22px 19px} .row2{grid-template-columns:1fr 1fr; gap:9px} .result-card{padding:21px 18px} .dtag{top:20px;right:16px} .result-value{font-size:24px} .calendar,.history{padding:22px 18px} .month-buttons{gap:5px} .day{font-size:11px} .legend{gap:9px} .section-heading h2{font-size:18px} }
+    @media(prefers-reduced-motion: reduce){ * {scroll-behavior:auto!important;transition:none!important} }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <nav class="topbar" aria-label="서비스 정보">
+        <div class="brand"><span class="mark" aria-hidden="true">◷</span> DEADLINE LAB</div>
+        <span class="top-pill">무료 · 로그인 없이 사용</span>
+      </nav>
+      <p class="eyebrow">SMART WORK TOOL</p>
+      <h1>마감일 계산,<br /><span class="hero-key">이제 헷갈리지 않게.</span></h1>
+      <p class="lead">날짜와 기간만 입력하세요. 달력일과 근무일 기준 마감일을<br />한눈에 비교하고, 중요한 업무 일정은 저장할 수 있어요.</p>
+    </div>
+  </header>
+
+  <main class="wrap main">
+    <div class="grid">
+      <section class="panel" aria-labelledby="input-title">
+        <div class="panel-inside">
+          <div class="section-heading"><h2 id="input-title">01. 기한 입력</h2><span class="tiny">필수 정보를 입력하세요</span></div>
+          <form id="deadline-form" novalidate>
+            <div class="field">
+              <label for="task-name">업무명 <span class="tiny">(선택)</span></label>
+              <input type="text" id="task-name" maxlength="80" placeholder="예: 조례안 검토 의견 회신" autocomplete="off" />
+            </div>
+            <div class="row2">
+              <div class="field">
+                <label for="start-date">시작일</label>
+                <input type="date" id="start-date" required />
+              </div>
+              <div class="field">
+                <label for="period">기간 (일)</label>
+                <input type="number" id="period" min="0" max="5000" step="1" value="14" required inputmode="numeric" />
+              </div>
+            </div>
+            <div class="quick"><span>빠른 선택</span><button type="button" data-days="7">7일</button><button type="button" data-days="14">14일</button><button type="button" data-days="20">20일</button><button type="button" data-days="30">30일</button></div>
+            <p style="margin:16px 0 0"></p>
+            <label class="checkline"><input id="include-start" type="checkbox" /><span>시작일을 첫날로 포함하기 <span class="tiny">(기본: 시작일 제외)</span></span></label>
+            <details class="holiday" id="holiday-details">
+              <summary>공휴일·휴무일 직접 입력 <span class="tiny">선택 기능</span></summary>
+              <div class="holiday-body">
+                <div class="field" style="margin-bottom:0">
+                  <label for="holidays">제외할 날짜</label>
+                  <textarea id="holidays" placeholder="2026-12-25&#10;2027-01-01" spellcheck="false"></textarea>
+                  <span class="hint">YYYY-MM-DD 형식으로 한 줄에 하나씩 입력하세요. 쉼표로 구분해도 됩니다. <strong>근무일 계산에서만 제외</strong>되며, 법정 공휴일은 자동 반영되지 않습니다.</span>
+                </div>
+              </div>
+            </details>
+            <div class="actionbar"><button class="primary" type="submit">마감일 계산하기 →</button><p id="error" role="alert" class="error"></p></div>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="result-title">
+        <div class="results">
+          <div class="section-heading"><h2 id="result-title">02. 계산 결과</h2><span class="tiny" id="result-task">업무 기한 미리보기</span></div>
+          <div aria-live="polite" aria-atomic="true">
+            <article class="result-card">
+              <span class="dtag" id="calendar-dday">D-0</span>
+              <div class="result-head"><span class="result-icon" aria-hidden="true">▦</span><span class="result-title">달력 기준 마감일</span></div>
+              <div class="result-value" id="calendar-date">—</div>
+              <div class="result-extra" id="calendar-extra">토요일·일요일·공휴일 포함</div>
+            </article>
+            <article class="result-card work">
+              <span class="dtag" id="work-dday">D-0</span>
+              <div class="result-head"><span class="result-icon" aria-hidden="true">✓</span><span class="result-title">근무일 기준 마감일</span></div>
+              <div class="result-value" id="work-date">—</div>
+              <div class="result-extra" id="work-extra">토요일·일요일 제외</div>
+            </article>
+            <div class="difference" id="difference">입력한 기간을 기준으로 두 가지 마감일을 비교합니다.</div>
+          </div>
+          <div class="buttons">
+            <button id="copy-result" class="secondary" type="button" disabled>▣ 결과 복사</button>
+            <button id="save-result" class="secondary" type="button" disabled>♡ 이력 저장</button>
+          </div>
+          <div class="footnote">
+            <strong>계산 원칙</strong> · 기본값은 시작일 다음 날을 1일째로 계산합니다. 시작일 포함을 선택하면 시작일이 1일째가 됩니다. 근무일 기준은 토·일요일과 직접 입력한 제외일을 건너뜁니다.<br />
+            <strong>유의사항</strong> · 이 앱은 일반적인 업무 일정 관리를 위한 도구입니다. 법정 기한에는 초일 산입, 공휴일 만료일 연장 등 별도 법률상 규칙이 적용될 수 있으므로 관계 법령을 반드시 확인하세요.
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="lower">
+      <section class="panel calendar" aria-labelledby="calendar-title">
+        <div class="calendar-top">
+          <h2 id="calendar-title">마감 캘린더</h2>
+          <div class="month-buttons"><button class="icon-button" id="prev-month" type="button" aria-label="이전 달">‹</button><span id="month-title"></span><button class="icon-button" id="next-month" type="button" aria-label="다음 달">›</button></div>
+        </div>
+        <div class="calendar-grid" id="calendar-grid" aria-label="월별 마감일 달력"></div>
+        <div class="legend"><span><i class="dot"></i>달력 기준</span><span><i class="dot work-dot"></i>근무일 기준</span><span><i class="dot holiday-dot"></i>입력 휴무일</span></div>
+      </section>
+      <section class="panel history" aria-labelledby="history-title">
+        <div class="history-header"><h2 id="history-title">저장한 업무 일정</h2><button class="clear" id="clear-history" type="button">전체 삭제</button></div>
+        <div class="records" id="records"></div>
+        <p class="hint">저장한 내용은 현재 브라우저에만 보관됩니다. 다른 기기와 공유되지 않습니다.</p>
+      </section>
+    </div>
+    <footer class="site-footer">DEADLINE LAB · 하나의 HTML 파일로 만든 업무 기한 계산기<br />브라우저 안에서만 계산하며 입력한 업무 정보는 서버에 전송하지 않습니다.</footer>
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      'use strict';
+      const $ = id => document.getElementById(id);
+      const DAY_MS = 86400000;
+      const KEY = 'deadline-lab-history-v1';
+      const form = $('deadline-form');
+      const state = { result: null, history: [], viewYear: 0, viewMonth: 0, toastTimer: null };
+
+      const pad = number => String(number).padStart(2, '0');
+      const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+      const utcDate = iso => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return null;
+        const [y,m,d] = iso.split('-').map(Number);
+        const date = new Date(Date.UTC(y, m-1, d));
+        if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m-1 || date.getUTCDate() !== d) return null;
+        return date;
+      };
+      const toISO = date => `${date.getUTCFullYear()}-${pad(date.getUTCMonth()+1)}-${pad(date.getUTCDate())}`;
+      const plusDays = (date, amount) => new Date(date.getTime() + amount * DAY_MS);
+      const diffDays = (a,b) => Math.round((a.getTime() - b.getTime()) / DAY_MS);
+      const isWeekend = date => date.getUTCDay() === 0 || date.getUTCDay() === 6;
+      const todayUTC = () => utcDate(todayISO());
+      const formatDate = iso => {
+        const date = utcDate(iso);
+        return `${date.getUTCFullYear()}.${pad(date.getUTCMonth()+1)}.${pad(date.getUTCDate())} (${['일','월','화','수','목','금','토'][date.getUTCDay()]})`;
+      };
+      const dday = iso => { const n=diffDays(utcDate(iso),todayUTC()); return n === 0 ? 'D-DAY' : n > 0 ? `D-${n}` : `D+${-n}`; };
+      function toast(message) {
+        const el=$('toast'); el.textContent=message; el.classList.add('show');
+        clearTimeout(state.toastTimer); state.toastTimer=setTimeout(()=>el.classList.remove('show'),2400);
+      }
+      function parseHolidays(raw) {
+        const words=(raw||'').split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean);
+        for(const word of words) if(!utcDate(word)) throw new Error(`휴무일 형식을 확인해 주세요: ${word}`);
+        return [...new Set(words)].sort();
+      }
+      function calculate(params) {
+        const start=utcDate(params.start);
+        if(!start) throw new Error('올바른 시작일을 선택해 주세요.');
+        if(!Number.isInteger(params.days)||params.days<0||params.days>5000) throw new Error('기간은 0~5,000 사이의 정수로 입력해 주세요.');
+        const holidaySet=new Set(params.holidays);
+        const firstOffset=params.includeStart ? 0 : 1;
+        const cal=plusDays(start,params.days===0?0:params.days-1+firstOffset);
+        let work;
+        if(params.days===0) { work=start; }
+        else {
+          let cursor=plusDays(start,firstOffset);
+          let counted=0;
+          while(counted<params.days) {
+            if(!isWeekend(cursor) && !holidaySet.has(toISO(cursor))) counted++;
+            if(counted<params.days) cursor=plusDays(cursor,1);
+          }
+          work=cursor;
+        }
+        return { ...params, calDue:toISO(cal), workDue:toISO(work), gap:diffDays(work,cal), countedHolidays:params.holidays.length };
+      }
+      function getFormData() {
+        const val=$('period').value.trim();
+        if(!/^\d+$/.test(val)) throw new Error('기간을 0 이상의 정수로 입력해 주세요.');
+        return { task:$('task-name').value.trim() || '이름 없는 업무', start:$('start-date').value, days:Number(val), includeStart:$('include-start').checked, holidays:parseHolidays($('holidays').value) };
+      }
+      function renderResult(r) {
+        $('result-task').textContent=r.task;
+        $('calendar-date').textContent=formatDate(r.calDue);
+        $('work-date').textContent=formatDate(r.workDue);
+        $('calendar-dday').textContent=dday(r.calDue);
+        $('work-dday').textContent=dday(r.workDue);
+        $('calendar-extra').textContent=`${r.days}일 · 토·일요일·공휴일 포함`;
+        $('work-extra').textContent=`${r.days}근무일 · 주말 제외${r.countedHolidays ? ` · 직접 입력한 휴무일 ${r.countedHolidays}개 반영` : ''}`;
+        $('difference').textContent=r.gap === 0 ? '두 가지 계산 결과가 같은 날짜입니다.' : `근무일 기준 마감일이 달력 기준보다 ${Math.abs(r.gap)}일 ${r.gap>0?'늦습니다.':'빠릅니다.'}`;
+        $('copy-result').disabled=false; $('save-result').disabled=false;
+        const due=utcDate(r.calDue); state.viewYear=due.getUTCFullYear(); state.viewMonth=due.getUTCMonth();
+        renderCalendar();
+      }
+      function renderCalendar() {
+        const y=state.viewYear,m=state.viewMonth;
+        $('month-title').textContent=`${y}년 ${m+1}월`;
+        const grid=$('calendar-grid'); grid.replaceChildren();
+        for(const name of ['월','화','수','목','금','토','일']){
+          const e=document.createElement('div');e.className='dayname';e.textContent=name;grid.append(e);
+        }
+        const first=new Date(Date.UTC(y,m,1));
+        const firstWeekday=(first.getUTCDay()+6)%7;
+        const count=new Date(Date.UTC(y,m+1,0)).getUTCDate();
+        for(let i=0;i<firstWeekday;i++){const e=document.createElement('div');e.className='day empty';e.setAttribute('aria-hidden','true');grid.append(e);}
+        const r=state.result;
+        for(let day=1;day<=count;day++) {
+          const date=new Date(Date.UTC(y,m,day)),iso=toISO(date);
+          const el=document.createElement('div');
+          el.className='day';
+          const isCal=r&&r.calDue===iso,isWork=r&&r.workDue===iso;
+          if(isWeekend(date)) el.classList.add('weekend');
+          if(r&&r.holidays.includes(iso)) el.classList.add('holiday-date');
+          if(todayISO()===iso) el.classList.add('today');
+          if(isCal&&isWork)el.classList.add('both-due');else if(isCal)el.classList.add('cal-due');else if(isWork)el.classList.add('work-due');
+          el.textContent=day;
+          let description=`${y}년 ${m+1}월 ${day}일`;
+          if(isCal)description+=' 달력 기준 마감일';if(isWork)description+=' 근무일 기준 마감일';
+          if(r&&r.holidays.includes(iso))description+=' 직접 입력한 휴무일';
+          el.setAttribute('aria-label',description);
+          el.title=description;
+          grid.append(el);
+        }
+      }
+      function readHistory(){try{ const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v.filter(x=>x&&typeof x.start==='string'&&typeof x.days==='number').slice(0,20):[]; }catch{return [];} }
+      function persistHistory(){try{localStorage.setItem(KEY,JSON.stringify(state.history));return true;}catch{toast('브라우저에서 저장 기능을 사용할 수 없습니다.');return false;} }
+      function renderHistory(){
+        const area=$('records');area.replaceChildren();
+        if(!state.history.length){const empty=document.createElement('div');empty.className='empty-records';empty.textContent='저장된 업무가 아직 없어요.\n계산 후 ‘이력 저장’을 눌러보세요.';empty.style.whiteSpace='pre-line';area.append(empty);return;}
+        state.history.forEach((r,index)=>{
+          const root=document.createElement('article');root.className='record';
+          const top=document.createElement('div');top.className='record-top';
+          const title=document.createElement('span');title.className='record-title';title.textContent=r.task||'이름 없는 업무';
+          const small=document.createElement('small');small.textContent=`시작 ${r.start} · ${r.days}일${r.includeStart?' · 시작일 포함':''}`;
+          title.append(small);top.append(title);
+          const bottom=document.createElement('div');bottom.className='record-bottom';
+          const date=document.createElement('span');date.textContent=`근무일 마감 ${r.workDue}`;
+          const actions=document.createElement('div');actions.className='record-actions';
+          const load=document.createElement('button');load.type='button';load.textContent='불러오기';load.setAttribute('aria-label',`${r.task||'이름 없는 업무'} 불러오기`);
+          load.onclick=()=>{
+            $('task-name').value=r.task==='이름 없는 업무'?'':r.task; $('start-date').value=r.start;$('period').value=r.days;$('include-start').checked=!!r.includeStart;
+            $('holidays').value=Array.isArray(r.holidays)?r.holidays.join('\n'):'';
+            if(r.holidays&&r.holidays.length)$('holiday-details').open=true;
+            onCalculate();window.scrollTo({top:0,behavior:'smooth'});
+          };
+          const remove=document.createElement('button');remove.type='button';remove.textContent='삭제';remove.setAttribute('aria-label',`${r.task||'이름 없는 업무'} 삭제`);
+          remove.onclick=()=>{state.history.splice(index,1);persistHistory();renderHistory();toast('저장한 일정이 삭제되었습니다.');};
+          actions.append(load,remove);bottom.append(date,actions);root.append(top,bottom);area.append(root);
+        });
+      }
+      function onCalculate(){
+        try{
+          const r=calculate(getFormData());state.result=r;$('error').textContent='';renderResult(r);
+        }catch(e){$('error').textContent=e.message;}
+      }
+      form.addEventListener('submit',event=>{event.preventDefault();onCalculate();});
+      document.querySelectorAll('[data-days]').forEach(button=>button.addEventListener('click',()=>{$('period').value=button.dataset.days;onCalculate();}));
+      $('prev-month').onclick=()=>{const d=new Date(Date.UTC(state.viewYear,state.viewMonth-1,1));state.viewYear=d.getUTCFullYear();state.viewMonth=d.getUTCMonth();renderCalendar();};
+      $('next-month').onclick=()=>{const d=new Date(Date.UTC(state.viewYear,state.viewMonth+1,1));state.viewYear=d.getUTCFullYear();state.viewMonth=d.getUTCMonth();renderCalendar();};
+      $('copy-result').onclick=async()=>{
+        const r=state.result;if(!r)return;
+        const out=`[업무 기한 계산 결과]\n업무명: ${r.task}\n시작일: ${r.start}\n기간: ${r.days}일 (${r.includeStart?'시작일 포함':'시작일 제외'})\n달력 기준: ${formatDate(r.calDue)} (${dday(r.calDue)})\n근무일 기준: ${formatDate(r.workDue)} (${dday(r.workDue)})\n직접 입력한 휴무일: ${r.holidays.join(', ')||'없음'}\n※ 법정 기한은 관계 법령에 따라 별도 검토 필요`;
+        try{if(!navigator.clipboard||!window.isSecureContext)throw Error('clipboard unavailable');await navigator.clipboard.writeText(out);toast('계산 결과를 복사했습니다.');}
+        catch{const ta=document.createElement('textarea');ta.value=out;ta.style.position='fixed';ta.style.opacity='0';document.body.append(ta);ta.select();const ok=document.execCommand('copy');ta.remove();toast(ok?'계산 결과를 복사했습니다.':'복사할 수 없습니다. HTTPS에서 다시 시도해 주세요.');}
+      };
+      $('save-result').onclick=()=>{
+        if(!state.result)return;
+        const copy=JSON.parse(JSON.stringify(state.result));
+        state.history=[copy,...state.history.filter(r=>!(r.task===copy.task&&r.start===copy.start&&r.days===copy.days&&r.includeStart===copy.includeStart&&JSON.stringify(r.holidays)===JSON.stringify(copy.holidays)))].slice(0,20);
+        if(persistHistory()){renderHistory();toast('이 브라우저에 일정을 저장했습니다.');}
+      };
+      $('clear-history').onclick=()=>{
+        if(!state.history.length){toast('삭제할 이력이 없습니다.');return;}
+        if(!confirm('저장한 업무 일정을 모두 삭제할까요?'))return;
+        state.history=[];persistHistory();renderHistory();toast('저장한 일정을 모두 삭제했습니다.');
+      };
+      $('start-date').value=todayISO();
+      const now=todayUTC();state.viewYear=now.getUTCFullYear();state.viewMonth=now.getUTCMonth();
+      state.history=readHistory();renderHistory();onCalculate();
+    })();
+  </script>
+</body>
+</html>
